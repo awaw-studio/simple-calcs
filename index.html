@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LOGIC PROCESSOR</title>
+    <title>AWAW STUDIOS | 逻辑处理器 Pro</title>
     <link rel="icon" href="favicon.png" type="image/png">
     <link href="https://fonts.googleapis.com/css2?family=Major+Mono+Display&family=Michroma&family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
@@ -75,7 +75,6 @@
             cursor: pointer; width: 100%; margin-top: 20px;
         }
         #result-display { text-align: center; font-family: 'Press Start 2P', cursive; color: var(--neon-blue); margin: 20px 0; }
-        .hint { font-size: 7px; color: #666; margin-top: 4px; line-height: 1.2; }
     </style>
 </head>
 <body>
@@ -86,7 +85,7 @@
 
     <header>
         <h1 class="title">LOGIC PROCESSOR</h1>
-        <p style="font-family:'Press Start 2P'; font-size:8px; color:var(--neon-pink); margin-top:10px;">SYSTEM_STATUS: NON_NEGATIVE_LOGIC_ON</p>
+        <p style="font-family:'Press Start 2P'; font-size:8px; color:var(--neon-pink); margin-top:10px;">SYSTEM_STATUS: INTEGER_DIVISION_LOCK_ON</p>
     </header>
 
     <section id="config-panel">
@@ -118,10 +117,10 @@
             </select>
         </div>
         <div class="config-group">
-            <label>DIV_LOGIC (除法逻辑)</label>
-            <div style="font-size:8px;">
-                <label><input type="checkbox" id="allow-remainder"> 允许余数</label>
-                <div class="hint">开启后格式: 3R1<br>(无余数直接填商)</div>
+            <label>ADVANCED (高级选项)</label>
+            <div style="font-size:8px; display:flex; flex-direction:column; gap:5px;">
+                <label><input type="checkbox" id="allow-remainder"> 允许余数 (3R1)</label>
+                <label><input type="checkbox" id="use-brackets"> 使用括号 ( )</label>
             </div>
         </div>
         <button class="gen-btn" onclick="generateQuiz()">GENERATE_DATA_STREAM (生成20道题)</button>
@@ -142,6 +141,7 @@
             const range = parseInt(document.getElementById('range-max').value);
             const mode = document.getElementById('eq-side').value;
             const allowRemainder = document.getElementById('allow-remainder').checked;
+            const useBrackets = document.getElementById('use-brackets').checked;
             const selectedOps = Array.from(document.querySelectorAll('.op-type:checked')).map(el => el.value);
 
             if(selectedOps.length === 0) { alert("错误: 请选择运算符。"); return; }
@@ -155,80 +155,94 @@
                 let nums = [], ops = [];
                 for(let j=0; j<opCount; j++) ops.push(selectedOps[Math.floor(Math.random() * selectedOps.length)]);
 
-                // 核心非负逻辑生成
-                let n1 = Math.floor(Math.random() * range) + 1;
-                let n2 = Math.floor(Math.random() * (ops[0] === '*' ? Math.sqrt(range) : range)) + 1;
+                // 核心数字生成逻辑
+                const getSafeNum = (max) => Math.floor(Math.random() * max) + 1;
 
-                // 减法确保不出现负数
-                if (ops[0] === '-' && n1 < n2) [n1, n2] = [n2, n1];
-                
-                // 除法整除逻辑
-                if (ops[0] === '/' && !allowRemainder) n1 = n2 * (Math.floor(Math.random() * 5) + 1);
+                let n1 = getSafeNum(range);
+                let n2 = getSafeNum(ops[0] === '*' ? Math.sqrt(range) : range);
 
+                // --- 运算符 1 校验 ---
+                if (ops[0] === '-') {
+                    if (n1 < n2) [n1, n2] = [n2, n1];
+                } else if (ops[0] === '/') {
+                    if (!allowRemainder) {
+                        // 确保整除且结果至少为 2
+                        let factor = Math.floor(Math.random() * 5) + 2; 
+                        n1 = n2 * factor;
+                    } else if (n1 < n2) {
+                        // 有余数模式下也保证结果 > 1
+                        n1 = n2 + getSafeNum(n2);
+                    }
+                }
                 nums.push(n1, n2);
 
+                // --- 运算符 2 校验 ---
                 if (opCount === 2) {
-                    let n3 = Math.floor(Math.random() * (ops[1] === '*' ? Math.sqrt(range) : range)) + 1;
+                    let n3 = getSafeNum(ops[1] === '*' ? Math.sqrt(range) : range);
                     let currentVal = eval(`${nums[0]} ${ops[0]} ${nums[1]}`);
-                    
-                    // 第二个运算符为减法时确保结果非负
-                    if (ops[1] === '-' && currentVal < n3) {
-                        // 如果当前值比n3小，把减法改成加法，或者重新调整n3
-                        n3 = Math.floor(Math.random() * currentVal) + 1;
-                    }
-                    
-                    // 第二个运算符为除法时确保整除
-                    if (ops[1] === '/' && !allowRemainder) {
-                        // 调整n3使其能被currentVal整除是不现实的，反向操作：
-                        // 这里简化处理：如果不能整除，强制n3为1，或让currentVal变为n3的倍数
-                        if (currentVal % n3 !== 0) n3 = 1; 
+
+                    if (ops[1] === '-') {
+                        if (currentVal < n3) n3 = Math.floor(Math.random() * currentVal);
+                    } else if (ops[1] === '/') {
+                        if (!allowRemainder) {
+                            // 确保整除且商 > 1。若currentVal太小无法实现，则强制将n3设为能让商为2的数或1
+                            if (currentVal >= 2) {
+                                // 找寻currentVal的所有因数(排除自身)
+                                let divisors = [];
+                                for(let d=1; d<=currentVal/2; d++) if(currentVal % d === 0) divisors.push(d);
+                                n3 = divisors.length > 0 ? divisors[Math.floor(Math.random()*divisors.length)] : 1;
+                            } else {
+                                n3 = 1; // 保底
+                            }
+                        } else {
+                            if (currentVal < n3) n3 = Math.max(1, Math.floor(currentVal / 2));
+                        }
                     }
                     nums.push(n3);
                 }
 
-                // 计算最终正确答案
-                let evalExpr = nums[0];
-                for(let j=0; j<opCount; j++) evalExpr += ` ${ops[j]} ${nums[j+1]}`;
-                let baseResult = Math.floor(eval(evalExpr));
+                let expression = "";
+                if (opCount === 2 && useBrackets) {
+                    const bPos = Math.random() > 0.5 ? 'front' : 'back';
+                    expression = bPos === 'front' ? `(${nums[0]} ${ops[0]} ${nums[1]}) ${ops[1]} ${nums[2]}` : `${nums[0]} ${ops[0]} (${nums[1]} ${ops[1]} ${nums[2]})`;
+                } else {
+                    expression = nums[0];
+                    for(let j=0; j<opCount; j++) expression += ` ${ops[j]} ${nums[j+1]}`;
+                }
 
-                let correctAnsText = "";
+                // 最终计算与格式化
+                let finalVal = eval(expression);
                 let displayRes = "";
 
                 if (ops.includes('/') && allowRemainder) {
+                    // 仅针对单除法或首个除法做余数显示
                     let a = nums[0], b = nums[1];
                     let q = Math.floor(a / b);
                     let r = a % b;
                     displayRes = r > 0 ? `${q}R${r}` : `${q}`;
                 } else {
-                    displayRes = baseResult.toString();
+                    displayRes = Math.floor(finalVal).toString();
                 }
 
                 let displayStr = "";
+                let correctAns = "";
                 if(mode === 'right') {
-                    let expression = nums[0];
-                    for(let j=0; j<opCount; j++) expression += ` ${ops[j].replace('*','×').replace('/','÷')} ${nums[j+1]}`;
-                    displayStr = expression + " = ";
-                    correctAnsText = displayRes;
+                    displayStr = expression.replace(/\*/g, '×').replace(/\//g, '÷') + " = ";
+                    correctAns = displayRes;
                 } else {
-                    if(opCount === 1) {
-                        displayStr = `${nums[0]} ${ops[0].replace('*','×').replace('/','÷')} [ ? ] = ${displayRes}`;
-                        correctAnsText = nums[1].toString();
-                    } else {
-                        displayStr = `${nums[0]} ${ops[0].replace('*','×').replace('/','÷')} [ ? ] ${ops[1].replace('*','×').replace('/','÷')} ${nums[2]} = ${displayRes}`;
-                        correctAnsText = nums[1].toString();
-                    }
+                    let midExp = expression.replace(/\*/g, '×').replace(/\//g, '÷');
+                    displayStr = midExp.replace(nums[1], "[ ? ]") + ` = ${displayRes}`;
+                    correctAns = nums[1].toString();
                 }
 
                 const row = document.createElement('div');
                 row.className = 'math-row';
-                row.innerHTML = `
-                    <span style="color:#555; width:45px;">#${(i+1).toString().padStart(2,'0')}</span>
+                row.innerHTML = `<span style="color:#555; width:45px;">#${(i+1).toString().padStart(2,'0')}</span>
                     <span style="flex-grow:1;">${displayStr}</span>
-                    <input type="text" class="math-input" id="input-${i}" onkeydown="handleKey(event, ${i})" spellcheck="false" autocomplete="off">
-                    <span id="feed-${i}" class="feedback"></span>
-                `;
+                    <input type="text" class="math-input" id="input-${i}" onkeydown="handleKey(event, ${i})" autocomplete="off">
+                    <span id="feed-${i}" class="feedback"></span>`;
                 list.appendChild(row);
-                currentAnswers.push(correctAnsText);
+                currentAnswers.push(correctAns);
             }
             setTimeout(() => document.getElementById('input-0').focus(), 100);
         }
@@ -236,24 +250,22 @@
         function handleKey(e, idx) {
             if(e.key === 'Enter') {
                 const next = document.getElementById(`input-${idx + 1}`);
-                if(next) next.focus();
-                else checkAll();
+                if(next) next.focus(); else checkAll();
             }
         }
 
         function checkAll() {
-            let correctCount = 0;
+            let score = 0;
             currentAnswers.forEach((ans, i) => {
                 const userVal = document.getElementById(`input-${i}`).value.trim().toUpperCase();
                 const feed = document.getElementById(`feed-${i}`);
-                if(userVal === ans.toString().toUpperCase()) {
-                    feed.innerText = "✓ PASS"; feed.className = "feedback correct";
-                    correctCount++;
+                if(userVal === ans.toUpperCase()) {
+                    feed.innerText = "✓ PASS"; feed.className = "feedback correct"; score++;
                 } else {
                     feed.innerText = `✗ FAIL (${ans})`; feed.className = "feedback wrong";
                 }
             });
-            document.getElementById('result-display').innerText = `ACCURACY: ${correctCount}/20 | ${Math.round(correctCount/20*100)}% SUCCESS`;
+            document.getElementById('result-display').innerText = `ACCURACY: ${score}/20 | ${Math.round(score/20*100)}% SUCCESS`;
         }
     </script>
 </body>
