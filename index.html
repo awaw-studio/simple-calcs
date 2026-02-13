@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LOGIC PROCESSOR</title>
+    <link rel="icon" href="favicon.png" type="image/png">
+    <link href="https://fonts.googleapis.com/css2?family=Major+Mono+Display&family=Michroma&family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --neon-blue: #00ffff;
+            --neon-pink: #ff00ff;
+            --dark-bg: #050510;
+        }
+
+        body {
+            background-color: var(--dark-bg);
+            color: #e0e0e0;
+            font-family: 'Michroma', sans-serif;
+            margin: 0; padding: 20px;
+            background-image: linear-gradient(rgba(0, 255, 255, 0.05) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(0, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 30px 30px;
+        }
+
+        .main-logo-container { position: fixed; top: 20px; right: 25px; z-index: 100; }
+        .main-site-logo { height: 70px; filter: drop-shadow(0 0 10px var(--neon-blue)); animation: pulse 3s infinite alternate; }
+        @keyframes pulse { from { opacity: 0.6; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+
+        header { text-align: center; padding: 30px 0; border-bottom: 2px solid var(--neon-pink); margin-bottom: 30px; background: rgba(0,0,0,0.5); }
+        .title { font-family: 'Major Mono Display', monospace; font-size: 2.2em; color: var(--neon-blue); margin: 0; }
+
+        #config-panel {
+            background: rgba(5, 5, 20, 0.9);
+            border: 1px solid var(--neon-blue);
+            padding: 20px; max-width: 950px; margin: 0 auto 30px;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px; font-size: 10px; font-family: 'Press Start 2P', cursive;
+        }
+
+        .config-group { display: flex; flex-direction: column; gap: 8px; }
+        label { color: var(--neon-pink); font-size: 8px; }
+        select, input[type="number"] {
+            background: #000; border: 1px solid var(--neon-blue);
+            color: var(--neon-blue); padding: 8px; font-family: monospace; outline: none;
+        }
+
+        .gen-btn {
+            grid-column: 1 / -1; background: var(--neon-pink); color: white;
+            border: none; padding: 15px; cursor: pointer;
+            font-family: 'Press Start 2P', cursive; transition: 0.3s;
+        }
+        .gen-btn:hover { background: #ff00aa; box-shadow: 0 0 20px var(--neon-pink); }
+
+        #quiz-container { max-width: 850px; margin: 0 auto; display: none; flex-direction: column; gap: 10px; }
+        .math-row {
+            display: flex; align-items: center; gap: 10px; padding: 12px;
+            background: rgba(255, 255, 255, 0.02); border-left: 3px solid var(--neon-blue);
+            font-family: 'Press Start 2P', cursive; font-size: 12px;
+        }
+
+        .math-input {
+            width: 100px; background: transparent; color: var(--neon-pink);
+            border: none; border-bottom: 2px solid var(--neon-pink);
+            font-size: 16px; text-align: center; outline: none; font-family: monospace;
+        }
+
+        .feedback { margin-left: auto; font-size: 9px; min-width: 120px; text-align: right; }
+        .correct { color: #00ff00; text-shadow: 0 0 5px #00ff00; }
+        .wrong { color: #ff0000; text-shadow: 0 0 5px #ff0000; }
+
+        .btn-check {
+            background: var(--neon-blue); color: black; border: none;
+            padding: 20px; font-family: 'Press Start 2P', cursive;
+            cursor: pointer; width: 100%; margin-top: 20px;
+        }
+        #result-display { text-align: center; font-family: 'Press Start 2P', cursive; color: var(--neon-blue); margin: 20px 0; }
+        .hint { font-size: 7px; color: #666; margin-top: 4px; line-height: 1.2; }
+    </style>
+</head>
+<body>
+
+    <div class="main-logo-container">
+        <img src="logo.png" alt="AWAW STUDIOS" class="main-site-logo">
+    </div>
+
+    <header>
+        <h1 class="title">LOGIC PROCESSOR</h1>
+        <p style="font-family:'Press Start 2P'; font-size:8px; color:var(--neon-pink); margin-top:10px;">SYSTEM_STATUS: NON_NEGATIVE_LOGIC_ON</p>
+    </header>
+
+    <section id="config-panel">
+        <div class="config-group">
+            <label>OPS_COUNT (运算符个数)</label>
+            <select id="op-count">
+                <option value="1">1 (例如 1+1)</option>
+                <option value="2">2 (例如 1+1+1)</option>
+            </select>
+        </div>
+        <div class="config-group">
+            <label>RANGE_MAX (最大数值)</label>
+            <input type="number" id="range-max" value="20">
+        </div>
+        <div class="config-group">
+            <label>OPS_TYPE (运算类型)</label>
+            <div style="font-size:8px; display:flex; gap:5px; flex-wrap: wrap;">
+                <label><input type="checkbox" class="op-type" value="+" checked> +</label>
+                <label><input type="checkbox" class="op-type" value="-" checked> -</label>
+                <label><input type="checkbox" class="op-type" value="*"> ×</label>
+                <label><input type="checkbox" class="op-type" value="/"> ÷</label>
+            </div>
+        </div>
+        <div class="config-group">
+            <label>MODE (题目格式)</label>
+            <select id="eq-side">
+                <option value="right">求结果 [ ? ]</option>
+                <option value="mid">求中间项 [ ? ]</option>
+            </select>
+        </div>
+        <div class="config-group">
+            <label>DIV_LOGIC (除法逻辑)</label>
+            <div style="font-size:8px;">
+                <label><input type="checkbox" id="allow-remainder"> 允许余数</label>
+                <div class="hint">开启后格式: 3R1<br>(无余数直接填商)</div>
+            </div>
+        </div>
+        <button class="gen-btn" onclick="generateQuiz()">GENERATE_DATA_STREAM (生成20道题)</button>
+    </section>
+
+    <main id="quiz-container">
+        <div id="quiz-list"></div>
+        <button class="btn-check" onclick="checkAll()">VALIDATE_RESULTS (批量批改)</button>
+        <div id="result-display"></div>
+    </main>
+
+    <script>
+        let currentAnswers = [];
+
+        function generateQuiz() {
+            const list = document.getElementById('quiz-list');
+            const opCount = parseInt(document.getElementById('op-count').value);
+            const range = parseInt(document.getElementById('range-max').value);
+            const mode = document.getElementById('eq-side').value;
+            const allowRemainder = document.getElementById('allow-remainder').checked;
+            const selectedOps = Array.from(document.querySelectorAll('.op-type:checked')).map(el => el.value);
+
+            if(selectedOps.length === 0) { alert("错误: 请选择运算符。"); return; }
+
+            list.innerHTML = '';
+            currentAnswers = [];
+            document.getElementById('result-display').innerText = '';
+            document.getElementById('quiz-container').style.display = 'flex';
+
+            for(let i = 0; i < 20; i++) {
+                let nums = [], ops = [];
+                for(let j=0; j<opCount; j++) ops.push(selectedOps[Math.floor(Math.random() * selectedOps.length)]);
+
+                // 核心非负逻辑生成
+                let n1 = Math.floor(Math.random() * range) + 1;
+                let n2 = Math.floor(Math.random() * (ops[0] === '*' ? Math.sqrt(range) : range)) + 1;
+
+                // 减法确保不出现负数
+                if (ops[0] === '-' && n1 < n2) [n1, n2] = [n2, n1];
+                
+                // 除法整除逻辑
+                if (ops[0] === '/' && !allowRemainder) n1 = n2 * (Math.floor(Math.random() * 5) + 1);
+
+                nums.push(n1, n2);
+
+                if (opCount === 2) {
+                    let n3 = Math.floor(Math.random() * (ops[1] === '*' ? Math.sqrt(range) : range)) + 1;
+                    let currentVal = eval(`${nums[0]} ${ops[0]} ${nums[1]}`);
+                    
+                    // 第二个运算符为减法时确保结果非负
+                    if (ops[1] === '-' && currentVal < n3) {
+                        // 如果当前值比n3小，把减法改成加法，或者重新调整n3
+                        n3 = Math.floor(Math.random() * currentVal) + 1;
+                    }
+                    
+                    // 第二个运算符为除法时确保整除
+                    if (ops[1] === '/' && !allowRemainder) {
+                        // 调整n3使其能被currentVal整除是不现实的，反向操作：
+                        // 这里简化处理：如果不能整除，强制n3为1，或让currentVal变为n3的倍数
+                        if (currentVal % n3 !== 0) n3 = 1; 
+                    }
+                    nums.push(n3);
+                }
+
+                // 计算最终正确答案
+                let evalExpr = nums[0];
+                for(let j=0; j<opCount; j++) evalExpr += ` ${ops[j]} ${nums[j+1]}`;
+                let baseResult = Math.floor(eval(evalExpr));
+
+                let correctAnsText = "";
+                let displayRes = "";
+
+                if (ops.includes('/') && allowRemainder) {
+                    let a = nums[0], b = nums[1];
+                    let q = Math.floor(a / b);
+                    let r = a % b;
+                    displayRes = r > 0 ? `${q}R${r}` : `${q}`;
+                } else {
+                    displayRes = baseResult.toString();
+                }
+
+                let displayStr = "";
+                if(mode === 'right') {
+                    let expression = nums[0];
+                    for(let j=0; j<opCount; j++) expression += ` ${ops[j].replace('*','×').replace('/','÷')} ${nums[j+1]}`;
+                    displayStr = expression + " = ";
+                    correctAnsText = displayRes;
+                } else {
+                    if(opCount === 1) {
+                        displayStr = `${nums[0]} ${ops[0].replace('*','×').replace('/','÷')} [ ? ] = ${displayRes}`;
+                        correctAnsText = nums[1].toString();
+                    } else {
+                        displayStr = `${nums[0]} ${ops[0].replace('*','×').replace('/','÷')} [ ? ] ${ops[1].replace('*','×').replace('/','÷')} ${nums[2]} = ${displayRes}`;
+                        correctAnsText = nums[1].toString();
+                    }
+                }
+
+                const row = document.createElement('div');
+                row.className = 'math-row';
+                row.innerHTML = `
+                    <span style="color:#555; width:45px;">#${(i+1).toString().padStart(2,'0')}</span>
+                    <span style="flex-grow:1;">${displayStr}</span>
+                    <input type="text" class="math-input" id="input-${i}" onkeydown="handleKey(event, ${i})" spellcheck="false" autocomplete="off">
+                    <span id="feed-${i}" class="feedback"></span>
+                `;
+                list.appendChild(row);
+                currentAnswers.push(correctAnsText);
+            }
+            setTimeout(() => document.getElementById('input-0').focus(), 100);
+        }
+
+        function handleKey(e, idx) {
+            if(e.key === 'Enter') {
+                const next = document.getElementById(`input-${idx + 1}`);
+                if(next) next.focus();
+                else checkAll();
+            }
+        }
+
+        function checkAll() {
+            let correctCount = 0;
+            currentAnswers.forEach((ans, i) => {
+                const userVal = document.getElementById(`input-${i}`).value.trim().toUpperCase();
+                const feed = document.getElementById(`feed-${i}`);
+                if(userVal === ans.toString().toUpperCase()) {
+                    feed.innerText = "✓ PASS"; feed.className = "feedback correct";
+                    correctCount++;
+                } else {
+                    feed.innerText = `✗ FAIL (${ans})`; feed.className = "feedback wrong";
+                }
+            });
+            document.getElementById('result-display').innerText = `ACCURACY: ${correctCount}/20 | ${Math.round(correctCount/20*100)}% SUCCESS`;
+        }
+    </script>
+</body>
+</html>
